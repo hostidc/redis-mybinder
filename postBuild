@@ -91,7 +91,7 @@ echo ">>> Installing NVM (Node Version Manager)..."
 # 设置 NVM 版本和 Node.js 版本
 export NVM_DIR="$HOME/.nvm"
 NVM_VERSION="v0.39.7"
-NODE_VERSION="22"  # LTS 版本
+NODE_VERSION="v22.22.2"  # LTS 版本
 
 # 下载并安装 NVM
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh | bash
