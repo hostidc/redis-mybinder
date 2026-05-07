@@ -1,0 +1,65 @@
+# ============================================
+# Ubuntu 24.04 系统工具集配置
+# 用于 MyBinder 环境的 Docker 构建
+# ============================================
+
+# 核心基础工具
+curl
+wget
+ca-certificates
+git
+iproute2
+procps
+net-tools
+dnsutils
+tree
+jq
+vim-tiny
+nano
+less
+unzip
+zip
+tar
+gzip
+
+# SSH 相关工具
+openssh-client
+openssh-server
+
+# 网络调试工具
+traceroute
+telnet
+netcat-openbsd
+
+# 文件处理工具
+file
+xxd
+
+# 系统监控工具
+htop
+iotop
+strace
+lsof
+
+# Python 环境（Ubuntu 24.04）
+python3
+python3-pip
+python3-venv
+python3-dev
+
+# NVM/Node.js 依赖
+# 注意：NVM 本身不是 apt 包，需要通过 postBuild 脚本安装
+# 以下包是编译 Node.js 原生模块所需的依赖
+build-essential
+libssl-dev
+pkg-config
+
+# 其他实用工具
+sudo
+locales
+tzdata
+man-db
+software-properties-common
+
+# 多媒体支持（原有）
+ffmpeg
