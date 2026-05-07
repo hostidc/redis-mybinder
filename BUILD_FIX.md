@@ -1,6 +1,8 @@
 # MyBinder 构建错误修复记录
 
-## 🐛 问题描述
+## 🐛 问题 1: MongoDB 安装权限错误
+
+### 问题描述
 
 在构建 MyBinder 镜像时，postBuild 脚本执行失败，报错：
 
@@ -8,6 +10,95 @@
 mkdir: cannot create directory '/opt/mongodb': Permission denied
 ERROR: failed to solve: process "/bin/sh -c ./postBuild" did not complete successfully: exit code: 1
 ```
+
+### 根本原因
+
+MyBinder 的 postBuild 脚本以**非 root 用户**（jovyan, UID 1000）运行，而 `/opt` 目录是系统目录，需要 root 权限才能写入。
+
+### 解决方案
+
+将 MongoDB 安装到用户有写权限的目录 `$HOME/.local/mongodb`。
+
+---
+
+## 🐛 问题 2: MongoDB 7.0 配置不兼容
+
+### 问题描述
+
+容器启动时 MongoDB 报错：
+
+```
+Unrecognized option: storage.journal.enabled
+try 'mongod --help' for more information
+```
+
+### 根本原因
+
+**MongoDB 7.0+ 版本已移除 `storage.journal.enabled` 配置项**。
+
+在 MongoDB 6.0 及更早版本中，可以显式配置：
+```yaml
+storage:
+  journal:
+    enabled: true  # ❌ MongoDB 7.0+ 不支持
+```
+
+但从 MongoDB 7.0 开始：
+- WiredTiger 存储引擎**默认启用 journaling**
+- 该配置项已被移除，不再识别
+- 强行配置会导致启动失败
+
+### 解决方案
+
+从配置文件中移除 `journal.enabled` 选项：
+
+**修改前（❌ 错误）：**
+```yaml
+storage:
+  dbPath: /tmp/mongodb-data
+  journal:
+    enabled: true  # MongoDB 7.0+ 不支持！
+```
+
+**修改后（✅ 正确）：**
+```yaml
+storage:
+  dbPath: /tmp/mongodb-data
+  # WiredTiger 引擎默认启用 journaling，无需显式配置
+```
+
+### 验证修复
+
+```
+# 启动 MongoDB
+mongod --config /tmp/mongod.conf
+
+# 应该看到成功启动，没有错误信息
+# 检查日志
+cat /tmp/mongodb-log/mongod.log
+
+# 验证连接
+mongosh --eval "db.adminCommand('ping')"
+# 输出: { ok: 1 }
+```
+
+### MongoDB 版本兼容性说明
+
+| MongoDB 版本 | journal.enabled 支持 | 说明 |
+|-------------|---------------------|------|
+| 4.x - 6.x   | ✅ 支持              | 可以显式配置 |
+| 7.0+        | ❌ 不支持            | 已移除，WiredTiger 默认启用 |
+
+### 最佳实践
+
+1. **不要配置 journal.enabled**: MongoDB 7.0+ 会自动启用
+2. **如需禁用 journaling**（不推荐）: 使用启动参数 `--nojournal`
+3. **查看当前配置**: 
+   ```bash
+   mongosh --eval "db.serverStatus().wiredTiger.log"
+   ```
+
+---
 
 ## 🔍 根本原因
 
@@ -95,7 +186,7 @@ pip 安装的包会自动放到用户 site-packages 目录，无需特殊处理�
 
 修复后，构建应该成功：
 
-```bash
+```
 # 构建过程中会看到
 >>> Installing MongoDB server...
    Detected architecture: x86_64

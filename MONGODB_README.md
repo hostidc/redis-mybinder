@@ -160,7 +160,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ### 主要配置项
 
-``yaml
+```
 systemLog:
   destination: file
   path: /tmp/mongodb-log/mongod.log
@@ -168,8 +168,7 @@ systemLog:
 
 storage:
   dbPath: /tmp/mongodb-data
-  journal:
-    enabled: true
+  # WiredTiger 引擎默认启用 journaling，无需显式配置
 
 net:
   bindIp: 127.0.0.1
@@ -178,6 +177,8 @@ net:
 processManagement:
   fork: true
 ```
+
+**注意**: MongoDB 7.0+ 已移除 `storage.journal.enabled` 配置项，因为 WiredTiger 存储引擎默认就启用了 journaling。
 
 ### 修改配置
 
