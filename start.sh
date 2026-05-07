@@ -27,21 +27,36 @@ if [ -f /tmp/mongod.conf ]; then
         # 启动 MongoDB（后台模式）
         mongod --config /tmp/mongod.conf
         
-        # 短暂等待 MongoDB 启动
-        sleep 2
+        # 等待 MongoDB 完全启动
+        echo "   Waiting for MongoDB to start..."
+        MAX_RETRIES=10
+        RETRY_COUNT=0
         
-        # 验证 MongoDB 是否成功启动
-        if mongosh --eval "db.adminCommand('ping')" --quiet 2>/dev/null | grep -q "ok"; then
-            echo "✓ MongoDB server is running on port 27017"
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            sleep 1
+            RETRY_COUNT=$((RETRY_COUNT + 1))
             
-            # 显示 MongoDB 信息
-            MONGO_INFO=$(mongosh --eval "db.version()" --quiet 2>/dev/null)
-            echo "   MongoDB version: $MONGO_INFO"
-        else
-            echo "✗ Failed to start MongoDB server"
-            echo "Check logs: cat /tmp/mongodb-log/mongod.log"
-            # 不退出，继续启动其他服务
-        fi
+            # 尝试连接 MongoDB
+            if mongosh --eval "db.adminCommand('ping')" 2>/dev/null | grep -q '"ok"'; then
+                echo "✓ MongoDB server is running on port 27017"
+                
+                # 显示 MongoDB 信息
+                MONGO_INFO=$(mongosh --eval "db.version()" 2>/dev/null | tail -1)
+                echo "   MongoDB version: $MONGO_INFO"
+                break
+            fi
+            
+            if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+                echo "✗ Failed to start MongoDB server (timeout after ${MAX_RETRIES}s)"
+                echo "Check logs: cat /tmp/mongodb-log/mongod.log"
+                
+                # 显示最后几行日志帮助调试
+                echo ""
+                echo "Last 10 lines of MongoDB log:"
+                tail -n 10 /tmp/mongodb-log/mongod.log 2>/dev/null || echo "No log file found"
+                break
+            fi
+        done
     fi
 else
     echo ""
