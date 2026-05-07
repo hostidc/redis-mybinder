@@ -54,6 +54,10 @@ build-essential
 libssl-dev
 pkg-config
 
+# Redis 服务器和客户端
+redis-server
+redis-tools
+
 # 其他实用工具
 sudo
 locales
