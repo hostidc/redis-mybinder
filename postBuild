@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================
 # MyBinder postBuild 脚本
-# 用于配置 Redis 服务器、NVM、Node.js 和其他自定义设置
+# 用于配置 Redis、MongoDB 服务器、NVM、Node.js 和其他自定义设置
 # ============================================
 
 set -e
@@ -49,7 +49,108 @@ EOF
 echo "✓ Redis configuration created at /tmp/redis.conf"
 
 # -------------------------------------------
-# 2. 安装 Python Redis 客户端（可选）
+# 2. 安装 MongoDB 服务器
+# -------------------------------------------
+echo ""
+echo ">>> Installing MongoDB server..."
+
+# 检测系统架构
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+    MONGO_ARCH="x86_64"
+elif [ "$ARCH" = "aarch64" ]; then
+    MONGO_ARCH="aarch64"
+else
+    echo "✗ Unsupported architecture: $ARCH"
+    exit 1
+fi
+
+echo "   Detected architecture: $MONGO_ARCH"
+
+# 设置 MongoDB 版本和下载 URL
+MONGO_VERSION="7.0.14"
+MONGO_URL="https://fastdl.mongodb.org/linux/mongodb-linux-${MONGO_ARCH}-ubuntu2204-${MONGO_VERSION}.tgz"
+MONGO_DIR="/opt/mongodb"
+
+# 下载并安装 MongoDB
+echo "   Downloading MongoDB $MONGO_VERSION..."
+cd /tmp
+wget -q "$MONGO_URL" -O mongodb.tgz
+
+# 解压到 /opt
+mkdir -p $MONGO_DIR
+tar xzf mongodb.tgz --strip-components=1 -C $MONGO_DIR
+
+# 清理下载文件
+rm mongodb.tgz
+
+# 创建符号链接到 /usr/local/bin
+ln -sf $MONGO_DIR/bin/mongod /usr/local/bin/mongod
+ln -sf $MONGO_DIR/bin/mongos /usr/local/bin/mongos
+ln -sf $MONGO_DIR/bin/mongosh /usr/local/bin/mongosh
+ln -sf $MONGO_DIR/bin/mongoexport /usr/local/bin/mongoexport
+ln -sf $MONGO_DIR/bin/mongoimport /usr/local/bin/mongoimport
+
+# 验证安装
+if command -v mongod &> /dev/null; then
+    MONGO_VER=$(mongod --version | head -n 1)
+    echo "✓ MongoDB installed: $MONGO_VER"
+else
+    echo "✗ MongoDB installation failed!"
+    exit 1
+fi
+
+# 创建 MongoDB 数据目录和配置文件
+MONGO_DATA_DIR="/tmp/mongodb-data"
+MONGO_LOG_DIR="/tmp/mongodb-log"
+mkdir -p $MONGO_DATA_DIR $MONGO_LOG_DIR
+chmod 755 $MONGO_DATA_DIR $MONGO_LOG_DIR
+
+# 创建 MongoDB 配置文件
+cat > /tmp/mongod.conf << 'EOF'
+# MongoDB 配置文件
+systemLog:
+  destination: file
+  path: /tmp/mongodb-log/mongod.log
+  logAppend: true
+
+storage:
+  dbPath: /tmp/mongodb-data
+  journal:
+    enabled: true
+
+net:
+  bindIp: 127.0.0.1
+  port: 27017
+
+processManagement:
+  fork: true
+
+security:
+  # authorization: enabled  # 生产环境启用认证
+EOF
+
+echo "✓ MongoDB configuration created at /tmp/mongod.conf"
+echo "   Data directory: $MONGO_DATA_DIR"
+echo "   Log directory: $MONGO_LOG_DIR"
+
+cd ~
+
+# -------------------------------------------
+# 3. 安装 Python MongoDB 客户端（可选）
+# -------------------------------------------
+echo ""
+echo ">>> Installing Python MongoDB client..."
+
+if command -v pip3 &> /dev/null; then
+    pip3 install pymongo --quiet
+    echo "✓ Python MongoDB client (pymongo) installed"
+else
+    echo "⚠ pip3 not found, skipping Python MongoDB client installation"
+fi
+
+# -------------------------------------------
+# 4. 安装 Python Redis 客户端（可选）
 # -------------------------------------------
 echo ""
 echo ">>> Installing Python Redis client..."
@@ -62,7 +163,7 @@ else
 fi
 
 # -------------------------------------------
-# 3. 验证 Redis 安装
+# 5. 验证 Redis 安装
 # -------------------------------------------
 echo ""
 echo ">>> Verifying Redis installation..."
@@ -83,7 +184,7 @@ else
 fi
 
 # -------------------------------------------
-# 4. 安装 NVM (Node Version Manager)
+# 6. 安装 NVM (Node Version Manager)
 # -------------------------------------------
 echo ""
 echo ">>> Installing NVM (Node Version Manager)..."
@@ -104,7 +205,7 @@ export NVM_DIR="$HOME/.nvm"
 echo "✓ NVM installed successfully"
 
 # -------------------------------------------
-# 5. 安装 Node.js
+# 7. 安装 Node.js
 # -------------------------------------------
 echo ""
 echo ">>> Installing Node.js $NODE_VERSION..."
@@ -121,7 +222,7 @@ echo "✓ Node.js installed: $NODE_VERSION_INSTALLED"
 echo "✓ npm installed: $NPM_VERSION_INSTALLED"
 
 # -------------------------------------------
-# 6. 安装 pnpm
+# 8. 安装 pnpm
 # -------------------------------------------
 echo ""
 echo ">>> Installing pnpm..."
@@ -134,7 +235,7 @@ PNPM_VERSION=$(pnpm --version)
 echo "✓ pnpm installed: $PNPM_VERSION"
 
 # -------------------------------------------
-# 7. 配置环境变量（持久化）
+# 9. 配置环境变量（持久化）
 # -------------------------------------------
 echo ""
 echo ">>> Configuring environment variables..."
@@ -162,7 +263,7 @@ fi
 echo "✓ Environment variables configured"
 
 # -------------------------------------------
-# 8. 其他自定义配置（可扩展）
+# 10. 其他自定义配置（可扩展）
 # -------------------------------------------
 echo ""
 echo ">>> Running additional configurations..."

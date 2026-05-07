@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================
 # MyBinder 容器启动脚本
-# 自动启动 Redis 服务器和 Jupyter Lab
+# 自动启动 MongoDB、Redis 服务器和 Jupyter Lab
 # ============================================
 
 set -e
@@ -11,7 +11,45 @@ echo "Starting MyBinder environment..."
 echo "========================================="
 
 # -------------------------------------------
-# 1. 启动 Redis 服务器
+# 1. 启动 MongoDB 服务器
+# -------------------------------------------
+if [ -f /tmp/mongod.conf ]; then
+    echo ""
+    echo ">>> Starting MongoDB server..."
+    
+    # 确保数据和日志目录存在
+    mkdir -p /tmp/mongodb-data /tmp/mongodb-log
+    
+    # 检查是否已经在运行
+    if pgrep -x "mongod" > /dev/null; then
+        echo "✓ MongoDB is already running"
+    else
+        # 启动 MongoDB（后台模式）
+        mongod --config /tmp/mongod.conf
+        
+        # 短暂等待 MongoDB 启动
+        sleep 2
+        
+        # 验证 MongoDB 是否成功启动
+        if mongosh --eval "db.adminCommand('ping')" --quiet 2>/dev/null | grep -q "ok"; then
+            echo "✓ MongoDB server is running on port 27017"
+            
+            # 显示 MongoDB 信息
+            MONGO_INFO=$(mongosh --eval "db.version()" --quiet 2>/dev/null)
+            echo "   MongoDB version: $MONGO_INFO"
+        else
+            echo "✗ Failed to start MongoDB server"
+            echo "Check logs: cat /tmp/mongodb-log/mongod.log"
+            # 不退出，继续启动其他服务
+        fi
+    fi
+else
+    echo ""
+    echo "⚠ MongoDB configuration not found, skipping MongoDB startup"
+fi
+
+# -------------------------------------------
+# 2. 启动 Redis 服务器
 # -------------------------------------------
 if [ -f /tmp/redis.conf ]; then
     echo ""
@@ -44,7 +82,7 @@ else
 fi
 
 # -------------------------------------------
-# 2. 环境检测（MyBinder vs 本地）
+# 3. 环境检测（MyBinder vs 本地）
 # -------------------------------------------
 echo ""
 echo ">>> Detecting environment..."
@@ -58,7 +96,7 @@ else
 fi
 
 # -------------------------------------------
-# 3. 启动 Jupyter Lab
+# 4. 启动 Jupyter Lab
 # -------------------------------------------
 echo ""
 echo ">>> Starting Jupyter Lab..."
@@ -76,6 +114,7 @@ echo "   Command: $JUPYTER_CMD"
 echo ""
 echo "========================================="
 echo "Environment ready!"
+echo "- MongoDB: localhost:27017"
 echo "- Redis: localhost:6379"
 echo "- Jupyter Lab: http://localhost:8888"
 echo "========================================="
