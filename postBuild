@@ -70,26 +70,37 @@ echo "   Detected architecture: $MONGO_ARCH"
 # 设置 MongoDB 版本和下载 URL
 MONGO_VERSION="7.0.14"
 MONGO_URL="https://fastdl.mongodb.org/linux/mongodb-linux-${MONGO_ARCH}-ubuntu2204-${MONGO_VERSION}.tgz"
-MONGO_DIR="/opt/mongodb"
+# 使用用户有权限的目录（/opt 需要 root 权限）
+MONGO_DIR="$HOME/.local/mongodb"
 
 # 下载并安装 MongoDB
 echo "   Downloading MongoDB $MONGO_VERSION..."
 cd /tmp
 wget -q "$MONGO_URL" -O mongodb.tgz
 
-# 解压到 /opt
+# 解压到用户目录
 mkdir -p $MONGO_DIR
 tar xzf mongodb.tgz --strip-components=1 -C $MONGO_DIR
 
 # 清理下载文件
 rm mongodb.tgz
 
-# 创建符号链接到 /usr/local/bin
-ln -sf $MONGO_DIR/bin/mongod /usr/local/bin/mongod
-ln -sf $MONGO_DIR/bin/mongos /usr/local/bin/mongos
-ln -sf $MONGO_DIR/bin/mongosh /usr/local/bin/mongosh
-ln -sf $MONGO_DIR/bin/mongoexport /usr/local/bin/mongoexport
-ln -sf $MONGO_DIR/bin/mongoimport /usr/local/bin/mongoimport
+# 创建符号链接到用户 bin 目录
+USER_BIN="$HOME/.local/bin"
+mkdir -p $USER_BIN
+ln -sf $MONGO_DIR/bin/mongod $USER_BIN/mongod
+ln -sf $MONGO_DIR/bin/mongos $USER_BIN/mongos
+ln -sf $MONGO_DIR/bin/mongosh $USER_BIN/mongosh
+ln -sf $MONGO_DIR/bin/mongoexport $USER_BIN/mongoexport
+ln -sf $MONGO_DIR/bin/mongoimport $USER_BIN/mongoimport
+
+# 确保用户 bin 目录在 PATH 中
+if ! echo "$PATH" | grep -q "$USER_BIN"; then
+    export PATH="$USER_BIN:$PATH"
+    # 添加到 shell 配置文件
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
+fi
 
 # 验证安装
 if command -v mongod &> /dev/null; then

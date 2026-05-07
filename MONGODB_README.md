@@ -14,6 +14,10 @@ mongod --version
 
 # 检查 mongosh（MongoDB Shell）
 mongosh --version
+
+# 查看安装位置
+which mongod
+# 输出: /home/jovyan/.local/bin/mongod
 ```
 
 ### 2. 测试连接
@@ -136,16 +140,27 @@ for result in results:
 
 ## ⚙️ 配置说明
 
-### MongoDB 配置文件位置
+### MongoDB 安装位置
 
+- **安装目录**: `$HOME/.local/mongodb`（非 root 用户可写）
+- **二进制文件**: `$HOME/.local/bin/mongod`, `$HOME/.local/bin/mongosh`
 - **配置文件**: `/tmp/mongod.conf`
 - **数据目录**: `/tmp/mongodb-data`
 - **日志目录**: `/tmp/mongodb-log`
 - **监听地址**: `127.0.0.1:27017`
 
+### 环境变量配置
+
+MongoDB 的 bin 目录已自动添加到 PATH：
+
+```bash
+# 在 ~/.bashrc 和 ~/.profile 中
+export PATH="$HOME/.local/bin:$PATH"
+```
+
 ### 主要配置项
 
-```yaml
+``yaml
 systemLog:
   destination: file
   path: /tmp/mongodb-log/mongod.log
