@@ -147,7 +147,99 @@ echo "   Log directory: $MONGO_LOG_DIR"
 cd ~
 
 # -------------------------------------------
-# 3. 安装 Python MongoDB 客户端（可选）
+# 3. 安装 MinIO 对象存储服务器
+# -------------------------------------------
+echo ""
+echo ">>> Installing MinIO server..."
+
+# 检测系统架构
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+    MINIO_ARCH="amd64"
+elif [ "$ARCH" = "aarch64" ]; then
+    MINIO_ARCH="arm64"
+else
+    echo "✗ Unsupported architecture: $ARCH"
+    exit 1
+fi
+
+echo "   Detected architecture: $MINIO_ARCH"
+
+# 设置 MinIO 版本和下载 URL
+MINIO_VERSION="RELEASE.2024-01-16T16-07-38Z"
+MINIO_URL="https://dl.min.io/server/minio/release/linux-${MINIO_ARCH}/minio"
+MINIO_DIR="$HOME/.local/minio"
+
+# 下载 MinIO 二进制文件
+echo "   Downloading MinIO..."
+mkdir -p $MINIO_DIR
+wget -q "$MINIO_URL" -O $MINIO_DIR/minio
+
+# 设置执行权限
+chmod +x $MINIO_DIR/minio
+
+# 创建符号链接到用户 bin 目录
+USER_BIN="$HOME/.local/bin"
+mkdir -p $USER_BIN
+ln -sf $MINIO_DIR/minio $USER_BIN/minio
+
+# 确保用户 bin 目录在 PATH 中
+if ! echo "$PATH" | grep -q "$USER_BIN"; then
+    export PATH="$USER_BIN:$PATH"
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
+fi
+
+# 验证安装
+if command -v minio &> /dev/null; then
+    MINIO_VER=$(minio --version)
+    echo "✓ MinIO installed: $MINIO_VER"
+else
+    echo "✗ MinIO installation failed!"
+    exit 1
+fi
+
+# 创建 MinIO 数据目录和配置文件
+MINIO_DATA_DIR="/tmp/minio-data"
+MINIO_CONFIG_DIR="/tmp/minio-config"
+mkdir -p $MINIO_DATA_DIR $MINIO_CONFIG_DIR
+chmod 755 $MINIO_DATA_DIR $MINIO_CONFIG_DIR
+
+# 设置 MinIO 认证信息
+MINIO_ROOT_USER="minioadmin"
+MINIO_ROOT_PASSWORD="minioadmin"
+
+# 创建 MinIO 环境变量文件
+cat > /tmp/minio.env << EOF
+# MinIO 环境变量
+MINIO_ROOT_USER=${MINIO_ROOT_USER}
+MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+MINIO_VOLUMES=${MINIO_DATA_DIR}
+MINIO_CONSOLE_ADDRESS=:9001
+EOF
+
+echo "✓ MinIO configuration created"
+echo "   Data directory: $MINIO_DATA_DIR"
+echo "   Console port: 9001"
+echo "   API port: 9000"
+echo "   Username: ${MINIO_ROOT_USER}"
+echo "   Password: ${MINIO_ROOT_PASSWORD}"
+
+# -------------------------------------------
+# 4. 安装 Python MinIO 客户端（可选）
+# -------------------------------------------
+echo ""
+echo ">>> Installing Python MinIO client..."
+
+if command -v pip3 &> /dev/null; then
+    pip3 install minio --quiet
+    echo "✓ Python MinIO client installed"
+else
+    echo "⚠ pip3 not found, skipping Python MinIO client installation"
+fi
+
+# -------------------------------------------
+# 5. 安装 Python MongoDB 客户端（可选）
 # -------------------------------------------
 echo ""
 echo ">>> Installing Python MongoDB client..."
@@ -160,7 +252,7 @@ else
 fi
 
 # -------------------------------------------
-# 4. 安装 Python Redis 客户端（可选）
+# 6. 安装 Python Redis 客户端（可选）
 # -------------------------------------------
 echo ""
 echo ">>> Installing Python Redis client..."
@@ -173,7 +265,7 @@ else
 fi
 
 # -------------------------------------------
-# 5. 验证 Redis 安装
+# 7. 验证 Redis 安装
 # -------------------------------------------
 echo ""
 echo ">>> Verifying Redis installation..."
@@ -194,7 +286,7 @@ else
 fi
 
 # -------------------------------------------
-# 6. 安装 NVM (Node Version Manager)
+# 8. 安装 NVM (Node Version Manager)
 # -------------------------------------------
 echo ""
 echo ">>> Installing NVM (Node Version Manager)..."
@@ -215,7 +307,7 @@ export NVM_DIR="$HOME/.nvm"
 echo "✓ NVM installed successfully"
 
 # -------------------------------------------
-# 7. 安装 Node.js
+# 9. 安装 Node.js
 # -------------------------------------------
 echo ""
 echo ">>> Installing Node.js $NODE_VERSION..."
@@ -232,7 +324,7 @@ echo "✓ Node.js installed: $NODE_VERSION_INSTALLED"
 echo "✓ npm installed: $NPM_VERSION_INSTALLED"
 
 # -------------------------------------------
-# 8. 安装 pnpm
+# 10. 安装 pnpm
 # -------------------------------------------
 echo ""
 echo ">>> Installing pnpm..."
@@ -245,7 +337,7 @@ PNPM_VERSION=$(pnpm --version)
 echo "✓ pnpm installed: $PNPM_VERSION"
 
 # -------------------------------------------
-# 9. 配置环境变量（持久化）
+# 11. 配置环境变量（持久化）
 # -------------------------------------------
 echo ""
 echo ">>> Configuring environment variables..."
@@ -273,7 +365,7 @@ fi
 echo "✓ Environment variables configured"
 
 # -------------------------------------------
-# 10. 其他自定义配置（可扩展）
+# 12. 其他自定义配置（可扩展）
 # -------------------------------------------
 echo ""
 echo ">>> Running additional configurations..."
